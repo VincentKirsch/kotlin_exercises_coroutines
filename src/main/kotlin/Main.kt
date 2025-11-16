@@ -1,6 +1,3 @@
-// For excluding range (i ..< j)
-@file:OptIn(ExperimentalStdlibApi::class)
-
 package com.example
 
 import kotlinx.coroutines.*
@@ -87,63 +84,37 @@ fun prepareData(max: Int, chunks: Int, spread: Spread = Spread.EVEN): List<List<
     require(chunks <= max) { "Can't ask for more chunks than max elements" }
 
     log("Going to prepare $max elements in $chunks chunks; possible remainder treatment: $spread")
-    val result = ArrayList<List<Int>>()
+    val result = mutableListOf<List<Int>>()
 
     // Could change if spread == Spread.ADDITIONAL_CHUNCK
-    var actualParallel = chunks
+    var actualChunks = chunks
 
-    val chunkSize = max / actualParallel
+    val chunkSize = max / actualChunks
     log ("Chunk size: $chunkSize", true)
 
-    var remainder = max % actualParallel
+    val remainder = max % actualChunks
     log ("Remainder: $remainder", true)
 
     if (remainder > 0 && spread == Spread.ADDITIONAL_CHUNK)
-        actualParallel++
+        actualChunks++
 
     // Create all the data
-    val data: List<Int> = (1..max).toList()
+    val data = (1..max).toList()
+    val baseChunkSize = max / chunks
 
     var nextSliceStart = 0
 
-    (0..<actualParallel).forEach {
-        // If there's a remainder, the chunk size will vary
-        var actualChunkSize = chunkSize
-
-        if (remainder > 0) {
-            when (spread) {
-                Spread.EVEN -> {
-                    log("Adding 1 more element to chunk $it", true)
-                    actualChunkSize++
-                    remainder--
-                }
-                Spread.ADDITIONAL_CHUNK -> {
-                    if (it == actualParallel - 1) {
-                        log("Adding an extra chunk of $remainder elements", true)
-                        actualChunkSize = remainder
-                    }
-                }
-                Spread.ALL_IN_FIRST -> {
-                    if (it == 0){
-                        log("Adding the $remainder extra elements to the first chunk", true)
-                        actualChunkSize = chunkSize + remainder
-                    }
-                }
-                Spread.ALL_IN_LAST -> {
-                    if (it == actualParallel - 1){
-                        log("Adding the $remainder extra elements to the first chunk", true)
-                        actualChunkSize = chunkSize + remainder
-                    }
-                }
-                Spread.IGNORED -> {
-                    log("The $remainder extra elements will be discarded", true)
-                    // Nothing to do here
-                }
-            }
+    repeat(actualChunks) { index ->
+        val actualChunkSize = when (spread) {
+            Spread.EVEN -> baseChunkSize + if (index < remainder) 1 else 0
+            Spread.ADDITIONAL_CHUNK -> if (index == chunks) remainder else baseChunkSize
+            Spread.ALL_IN_FIRST -> if (index == 0) baseChunkSize + remainder else baseChunkSize
+            Spread.ALL_IN_LAST -> if (index == chunks - 1) baseChunkSize + remainder else baseChunkSize
+            Spread.IGNORED -> baseChunkSize // discards remainder
         }
 
         log("Chunk size: $actualChunkSize - slicing from $nextSliceStart to ${(nextSliceStart+actualChunkSize)} excluded", true)
-        val chunk = data.slice(nextSliceStart..< nextSliceStart + actualChunkSize)
+        val chunk = data.slice(nextSliceStart until (nextSliceStart + actualChunkSize))
         result.add(chunk)
 
         nextSliceStart += actualChunkSize
