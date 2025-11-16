@@ -82,12 +82,9 @@ suspend fun compute(data: List<Int>): List<Double> {
  */
 fun prepareData(max: Int, chunks: Int, spread: Spread = Spread.EVEN): List<List<Int>> {
 
-    if (chunks <= 0)
-        throw IllegalArgumentException("At least 1 chunk is required")
-    if (max <= 0)
-        throw IllegalArgumentException("At least on element is required")
-    if (chunks > max)
-        throw IllegalArgumentException("Can't ask more chunks than max elements")
+    require(chunks > 0) { "At least 1 chunk is required" }
+    require(max > 0) { "At least one element is required" }
+    require(chunks <= max) { "Can't ask for more chunks than max elements" }
 
     log("Going to prepare $max elements in $chunks chunks; possible remainder treatment: $spread")
     val result = ArrayList<List<Int>>()
